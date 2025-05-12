@@ -77,6 +77,9 @@ typedef enum
 	undef	= 0xFFFFFFFF
 } boolean;
 
+//#include <stdbool.h>
+//typedef bool boolean;
+
 #endif
 
 typedef uint8_t byte;

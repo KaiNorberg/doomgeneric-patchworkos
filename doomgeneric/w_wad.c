@@ -220,7 +220,7 @@ wad_file_t *W_AddFile (char *filename)
 		lump_p->size = LONG(filerover->size);
 			lump_p->cache = NULL;
 		strncpy(lump_p->name, filerover->name, 8);
-
+        //printf("%.8s", lump_p->name);
 			++lump_p;
 			++filerover;
     }

@@ -1171,6 +1171,8 @@ void M_QuitDOOM(int choice)
                  DEH_String(M_SelectEndMessage()));
 
     M_StartMessage(endstring,M_QuitResponse,true);
+
+    exit(EXIT_SUCCESS); // kai: just exit the game
 }
 
 
