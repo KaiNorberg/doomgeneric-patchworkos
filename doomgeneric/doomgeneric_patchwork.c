@@ -297,9 +297,7 @@ static inline void* memset32_inline(void* s, uint32_t c, size_t n)
 }
 
 void DG_DrawFrame()
-{
-    clock_t start = uptime();
-    
+{    
     for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++)
     {
         const uint64_t srcRowOffset = srcY * SCREENWIDTH;
@@ -324,9 +322,6 @@ void DG_DrawFrame()
             memset32_inline(&dstRow[runStart], currentPixel, dstXEnd[SCREENWIDTH-1] - runStart);
         }
     }
-
-    clock_t end = uptime();
-    printf("%d\n", (end - start) / (CLOCKS_PER_SEC / 1000));
 }
 
 void DG_SleepMs(uint32_t ms)
