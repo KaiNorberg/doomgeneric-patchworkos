@@ -37,6 +37,20 @@
 
 #define MAX_MOUSE_BUTTONS 8
 
+// kai: added this stuff
+struct color {
+    uint32_t b:8;
+    uint32_t g:8;
+    uint32_t r:8;
+    uint32_t a:8;
+};
+#ifdef CMAP256
+boolean palette_changed;
+extern struct color colors[256];
+#else  // CMAP256
+extern struct color colors[256];
+#endif  // CMAP256
+
 typedef struct
 {
     // Screen width and height
@@ -138,12 +152,13 @@ void I_EnableLoadingDisk(void);
 
 void I_EndRead (void);
 
-struct color {
+// kai: moved up
+/*struct color {
     uint32_t b:8;
     uint32_t g:8;
     uint32_t r:8;
     uint32_t a:8;
-};
+};*/
 
 
 extern char *video_driver;

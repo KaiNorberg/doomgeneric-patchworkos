@@ -1,6 +1,7 @@
 #include "m_argv.h"
 #include "doomkeys.h"
 #include "doomgeneric.h"
+#include "i_video.h"
 
 #include <threads.h>
 #include <stdio.h>
@@ -11,13 +12,13 @@
 
 static fb_info_t info;
 static uint32_t* screenbuffer;
+static uint64_t upscale;
 
 static bool init;
-
 static clock_t startTime;
-static display_t* disp;
 
-static fd_t kbd;
+static display_t* disp;
+static window_t* win;
 
 const int keyToDoomkey[256] = {
     [KBD_NONE] = 0,
@@ -78,7 +79,7 @@ const int keyToDoomkey[256] = {
     [KBD_ESC] = KEY_ESCAPE,
     [KBD_BACKSPACE] = KEY_BACKSPACE,
     [KBD_TAB] = KEY_TAB,
-    [KBD_SPACE] = ' ',
+    //[KBD_SPACE] = ' ',
     [KBD_MINUS] = KEY_MINUS,
     [KBD_EQUAL] = KEY_EQUALS,
     [KBD_PAUSE] = KEY_PAUSE,
@@ -140,13 +141,53 @@ const int keyToDoomkey[256] = {
     [KBD_ERR_UNDEFINED] = KEY_ESCAPE
 };
 
+#define KBD_QUEUE_SIZE 16
+
+static event_kbd_t kbdQueue[KBD_QUEUE_SIZE];
+static uint64_t kbdQueueWriteIndex = 0;
+static uint64_t kbdQueueReadIndex = 0;
+
+static void key_queue_push(const event_kbd_t* event)
+{
+	kbdQueue[kbdQueueWriteIndex] = *event;
+	kbdQueueWriteIndex = (kbdQueueWriteIndex + 1) % KBD_QUEUE_SIZE;
+}
+
+static event_kbd_t key_queue_pop(void)
+{
+	event_kbd_t event = kbdQueue[kbdQueueReadIndex];
+	kbdQueueReadIndex = (kbdQueueReadIndex + 1) % KBD_QUEUE_SIZE;
+    return event;
+}
+
+static bool key_queue_avail(void)
+{
+    return (kbdQueueReadIndex != kbdQueueWriteIndex);
+}
+
+static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
+{
+    switch (event->type)
+    {
+    case EVENT_KBD:
+    {
+        key_queue_push(&event->kbd);
+    }
+    break;
+    }
+
+    return 0;
+}
+
 void DG_Init()
 {
     init = true;
     startTime = uptime();
 
     disp = display_new();
-    display_screen_acquire(disp, 0);
+
+    rect_t rect = RECT_INIT_DIM(0, 0, 1, 1); // Does not matter for a fullscreen window
+    window_t* win = window_new(disp, "Doom", &rect, SURFACE_FULLSCREEN, WINDOW_NONE, procedure, NULL);
 
     fd_t fb = open("sys:/fb0");
     if (fb == ERR)
@@ -179,27 +220,92 @@ void DG_Init()
 
     close(fb);
 
-    kbd = open("sys:/kbd/ps2");
+    upscale = MIN(info.width / SCREENWIDTH, info.height / SCREENHEIGHT);
 }
 
 static void deinit(void)
 {
     munmap(screenbuffer, info.stride * info.height * sizeof(uint32_t));
 
-    display_screen_release(disp, 0);
+    window_free(win);
     display_free(disp);
+}
+
+static void _cmap_to_fb(uint8_t * out, uint8_t * in, int in_pixels)
+{
+    int i, j, k;
+    struct color c;
+    uint32_t pix;
+    uint16_t r, g, b;
+
+    for (i = 0; i < in_pixels; i++)
+    {
+        c = colors[*in];  /* R:8 G:8 B:8 format! */
+
+        for (k = 0; k < upscale; k++) {
+            for (j = 0; j < 32/8; j++) {
+                *out = (pix >> (j*8));
+                out++;
+            }
+        }
+        in++;
+    }
+}
+
+static inline void* memset32_inline(void* s, uint32_t c, size_t n)
+{
+    uint32_t* p = s;
+    
+    while (((uintptr_t)p & 3) && n) {
+        *p++ = c;
+        n--;
+    }
+    
+    while (n >= 4) {
+        p[0] = c;
+        p[1] = c;
+        p[2] = c;
+        p[3] = c;
+        p += 4;
+        n -= 4;
+    }
+    
+    while (n >= 1) {
+        *p++ = c;
+        n--;
+    }
+    
+    return s;
 }
 
 void DG_DrawFrame()
 {
-    int topLeftX = (info.width / 2 - DOOMGENERIC_RESX / 2);
-    int topLeftY = (info.height / 2 - DOOMGENERIC_RESY / 2);
+    // Note: We have disabled the normal system used in doom generic, it keeps a buffer of colors codes (I_VideoBuffer), and then uses that to draw a framebuffer (DG_ScreenBuffer) which is then supposed to be copied in this function to the screen, we skip this step and instead draw the color codes to the screen immediately.
+    
+    const uint64_t scaledWidth = SCREENWIDTH * upscale;
+    const uint64_t scaledHeight = SCREENHEIGHT * upscale;
 
-    for (uint64_t y = 0; y < DOOMGENERIC_RESY; y++)
+    const uint64_t topLeftX = (info.width - scaledWidth) / 2;
+    const uint64_t topLeftY = (info.height - scaledHeight) / 2;
+    
+    for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++)
     {
-        memcpy(&screenbuffer[(topLeftY + y) * info.stride + topLeftX], &DG_ScreenBuffer[y * DOOMGENERIC_RESX], DOOMGENERIC_RESX * sizeof(uint32_t));
-    }
+        const uint64_t srcRowOffset = srcY * SCREENWIDTH;
+        const uint64_t dstYStart = topLeftY + srcY * upscale;
 
+        for (uint64_t dy = 0; dy < upscale; dy++)
+        {                
+            const uint64_t dstRow = dstYStart + dy;
+
+            for (uint64_t srcX = 0; srcX < SCREENWIDTH; srcX++)
+            {
+                const uint32_t pixel = *((uint32_t*)&colors[I_VideoBuffer[srcX + srcRowOffset]]);
+                const uint64_t dstXStart = topLeftX + srcX * upscale;
+
+                memset32_inline(&screenbuffer[dstXStart + dstRow * info.stride], pixel, upscale);
+            }
+        }
+    }
 }
 
 void DG_SleepMs(uint32_t ms)
@@ -215,10 +321,9 @@ uint32_t DG_GetTicksMs()
 
 int DG_GetKey(int* pressed, unsigned char* doomKey)
 {
-    if (poll1(kbd, POLL_READ, 0) & POLL_READ)
+    if (key_queue_avail())
     {
-        kbd_event_t event;
-        read(kbd, &event, sizeof(kbd_event_t));
+        event_kbd_t event = key_queue_pop();
 
         *pressed = event.type == KBD_PRESS;
         *doomKey = keyToDoomkey[event.code];
@@ -239,8 +344,13 @@ int main(int argc, char **argv)
 
     doomgeneric_Create(argc, argv);
 
-    while (1)
+    while (display_connected(disp))
     {
+        event_t event;
+        while (display_next_event(disp, &event, 0))
+        {
+            display_dispatch(disp, &event);
+        }
         doomgeneric_Tick();
     }
 

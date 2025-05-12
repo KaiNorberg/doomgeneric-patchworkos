@@ -4,14 +4,17 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+// kai: removed DG_ScreenBuffer
+
+/*
 #ifndef DOOMGENERIC_RESX
-#define DOOMGENERIC_RESX 640 * 2 // kai: upscale
+#define DOOMGENERIC_RESX 320 * 5 // kai: upscale
 #endif  // DOOMGENERIC_RESX
 
 #ifndef DOOMGENERIC_RESY
-#define DOOMGENERIC_RESY 400 * 2 // kai: upscale
+#define DOOMGENERIC_RESY 200 * 5 // kai: upscale
 #endif  // DOOMGENERIC_RESY
-
+*/
 
 #ifdef CMAP256
 
@@ -24,7 +27,7 @@ typedef uint32_t pixel_t;
 #endif  // CMAP256
 
 
-extern pixel_t* DG_ScreenBuffer;
+//extern pixel_t* DG_ScreenBuffer;
 
 void doomgeneric_Create(int argc, char **argv);
 void doomgeneric_Tick();
