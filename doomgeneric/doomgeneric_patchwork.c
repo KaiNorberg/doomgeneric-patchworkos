@@ -231,27 +231,6 @@ static void deinit(void)
     display_free(disp);
 }
 
-static void _cmap_to_fb(uint8_t * out, uint8_t * in, int in_pixels)
-{
-    int i, j, k;
-    struct color c;
-    uint32_t pix;
-    uint16_t r, g, b;
-
-    for (i = 0; i < in_pixels; i++)
-    {
-        c = colors[*in];  /* R:8 G:8 B:8 format! */
-
-        for (k = 0; k < upscale; k++) {
-            for (j = 0; j < 32/8; j++) {
-                *out = (pix >> (j*8));
-                out++;
-            }
-        }
-        in++;
-    }
-}
-
 static inline void* memset32_inline(void* s, uint32_t c, size_t n)
 {
     uint32_t* p = s;

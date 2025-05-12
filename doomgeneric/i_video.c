@@ -49,30 +49,30 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 
 //#define CMAP256
 
-struct FB_BitField
-{
-	uint32_t offset;			/* beginning of bitfield	*/
-	uint32_t length;			/* length of bitfield		*/
-};
+//struct FB_BitField
+//{
+//	uint32_t offset;			/* beginning of bitfield	*/
+//	uint32_t length;			/* length of bitfield		*/
+//};
 
-struct FB_ScreenInfo
-{
-	uint32_t xres;			/* visible resolution		*/
-	uint32_t yres;
-	uint32_t xres_virtual;		/* virtual resolution		*/
-	uint32_t yres_virtual;
+//struct FB_ScreenInfo
+//{
+//	uint32_t xres;			/* visible resolution		*/
+//	uint32_t yres;
+//	uint32_t xres_virtual;		/* virtual resolution		*/
+//	uint32_t yres_virtual;
+//
+//	uint32_t bits_per_pixel;		/* guess what			*/
+//	
+//							/* >1 = FOURCC			*/
+//	struct FB_BitField red;		/* bitfield in s_Fb mem if true color, */
+//	struct FB_BitField green;	/* else only length is significant */
+//	struct FB_BitField blue;
+//	struct FB_BitField transp;	/* transparency			*/
+//};
 
-	uint32_t bits_per_pixel;		/* guess what			*/
-	
-							/* >1 = FOURCC			*/
-	struct FB_BitField red;		/* bitfield in s_Fb mem if true color, */
-	struct FB_BitField green;	/* else only length is significant */
-	struct FB_BitField blue;
-	struct FB_BitField transp;	/* transparency			*/
-};
-
-static struct FB_ScreenInfo s_Fb;
-int fb_scaling = 1;
+//static struct FB_ScreenInfo s_Fb;
+//int fb_scaling = 1;
 int usemouse = 0;
 
 
@@ -130,7 +130,7 @@ typedef struct
 
 static uint16_t rgb565_palette[256];
 
-void cmap_to_rgb565(uint16_t * out, uint8_t * in, int in_pixels)
+/*void cmap_to_rgb565(uint16_t * out, uint8_t * in, int in_pixels)
 {
     int i, j;
     struct color c;
@@ -160,7 +160,7 @@ void cmap_to_fb(uint8_t * out, uint8_t * in, int in_pixels)
 
     for (i = 0; i < in_pixels; i++)
     {
-        c = colors[*in];  /* R:8 G:8 B:8 format! */
+        c = colors[*in];
         r = (uint16_t)(c.r >> (8 - s_Fb.red.length));
         g = (uint16_t)(c.g >> (8 - s_Fb.green.length));
         b = (uint16_t)(c.b >> (8 - s_Fb.blue.length));
@@ -176,7 +176,7 @@ void cmap_to_fb(uint8_t * out, uint8_t * in, int in_pixels)
         }
         in++;
     }
-}
+}*/
 
 void I_InitGraphics (void)
 {
