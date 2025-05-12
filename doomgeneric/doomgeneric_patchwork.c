@@ -10,9 +10,10 @@
 #include <sys/fb.h>
 #include <libdwm/dwm.h>
 
+// Note: I might have over optimized rendering a little.
+
 static fb_info_t info;
 static uint32_t* screenbuffer;
-static uint64_t upscale;
 
 static bool init;
 static clock_t startTime;
@@ -179,6 +180,44 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     return 0;
 }
 
+static uint64_t dstYStart[SCREENHEIGHT];
+static uint64_t dstYEnd[SCREENHEIGHT];
+static uint64_t dstXStart[SCREENWIDTH];
+static uint64_t dstXEnd[SCREENWIDTH];
+
+static void precalculate_coords(void)
+{
+    uint64_t upscaleNumerator;
+    uint64_t upscaleDenominator;
+    if (info.width / SCREENWIDTH > info.height / SCREENHEIGHT)
+    {
+        upscaleNumerator = info.height;
+        upscaleDenominator = SCREENHEIGHT;
+    }
+    else
+    {
+        upscaleNumerator = info.width;
+        upscaleDenominator = SCREENWIDTH;
+    }
+
+    const uint64_t scaledWidth = (SCREENWIDTH * upscaleNumerator) / upscaleDenominator;
+    const uint64_t scaledHeight = (SCREENHEIGHT * upscaleNumerator) / upscaleDenominator;
+    const uint64_t topLeftX = (info.width - scaledWidth) / 2;
+    const uint64_t topLeftY = (info.height - scaledHeight) / 2;
+    
+    for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++) 
+    {
+        dstYStart[srcY] = topLeftY + (srcY * upscaleNumerator) / upscaleDenominator;
+        dstYEnd[srcY] = topLeftY + ((srcY + 1) * upscaleNumerator) / upscaleDenominator;
+    }
+    
+    for (uint64_t srcX = 0; srcX < SCREENWIDTH; srcX++) 
+    {
+        dstXStart[srcX] = topLeftX + (srcX * upscaleNumerator) / upscaleDenominator;
+        dstXEnd[srcX] = topLeftX + ((srcX + 1) * upscaleNumerator) / upscaleDenominator;
+    }
+}
+
 void DG_Init()
 {
     init = true;
@@ -220,7 +259,7 @@ void DG_Init()
 
     close(fb);
 
-    upscale = MIN(info.width / SCREENWIDTH, info.height / SCREENHEIGHT);
+    precalculate_coords();
 }
 
 static void deinit(void)
@@ -240,7 +279,7 @@ static inline void* memset32_inline(void* s, uint32_t c, size_t n)
         n--;
     }
     
-    while (n >= 4) {
+    while (n >= 8) {
         p[0] = c;
         p[1] = c;
         p[2] = c;
@@ -259,32 +298,35 @@ static inline void* memset32_inline(void* s, uint32_t c, size_t n)
 
 void DG_DrawFrame()
 {
-    // Note: We have disabled the normal system used in doom generic, it keeps a buffer of colors codes (I_VideoBuffer), and then uses that to draw a framebuffer (DG_ScreenBuffer) which is then supposed to be copied in this function to the screen, we skip this step and instead draw the color codes to the screen immediately.
-    
-    const uint64_t scaledWidth = SCREENWIDTH * upscale;
-    const uint64_t scaledHeight = SCREENHEIGHT * upscale;
-
-    const uint64_t topLeftX = (info.width - scaledWidth) / 2;
-    const uint64_t topLeftY = (info.height - scaledHeight) / 2;
+    clock_t start = uptime();
     
     for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++)
     {
         const uint64_t srcRowOffset = srcY * SCREENWIDTH;
-        const uint64_t dstYStart = topLeftY + srcY * upscale;
-
-        for (uint64_t dy = 0; dy < upscale; dy++)
-        {                
-            const uint64_t dstRow = dstYStart + dy;
-
-            for (uint64_t srcX = 0; srcX < SCREENWIDTH; srcX++)
+        
+        for (uint64_t y = dstYStart[srcY]; y < dstYEnd[srcY]; y++) 
+        {
+            uint32_t* dstRow = &screenbuffer[y * info.stride];
+            uint64_t runStart = dstXStart[0];
+            uint32_t currentPixel = *((uint32_t*)&colors[I_VideoBuffer[srcRowOffset]]);
+            
+            for (uint64_t srcX = 1; srcX < SCREENWIDTH; srcX++)
             {
-                const uint32_t pixel = *((uint32_t*)&colors[I_VideoBuffer[srcX + srcRowOffset]]);
-                const uint64_t dstXStart = topLeftX + srcX * upscale;
-
-                memset32_inline(&screenbuffer[dstXStart + dstRow * info.stride], pixel, upscale);
+                const uint32_t nextPixel = *((uint32_t*)&colors[I_VideoBuffer[srcX + srcRowOffset]]);
+                
+                if (nextPixel != currentPixel) {
+                    memset32_inline(&dstRow[runStart], currentPixel, dstXStart[srcX] - runStart);
+                    runStart = dstXStart[srcX];
+                    currentPixel = nextPixel;
+                }
             }
+            
+            memset32_inline(&dstRow[runStart], currentPixel, dstXEnd[SCREENWIDTH-1] - runStart);
         }
     }
+
+    clock_t end = uptime();
+    printf("%d\n", (end - start) / (CLOCKS_PER_SEC / 1000));
 }
 
 void DG_SleepMs(uint32_t ms)
