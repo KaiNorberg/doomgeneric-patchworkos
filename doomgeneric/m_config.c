@@ -2042,11 +2042,12 @@ float M_GetFloatVariable(char *name)
 
 static char *GetDefaultConfigDir(void)
 {
-    char *result = (char *)malloc(2);
+    /*char *result = (char *)malloc(2);
     result[0] = '.';
-    result[1] = '\0';
+    result[1] = '\0';*/
 
-    return result;
+    // kai: use files_dir
+    return strdup(FILES_DIR);
 }
 
 // 

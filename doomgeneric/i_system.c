@@ -401,7 +401,8 @@ void I_Error (char *error, ...)
         }
 
         entry = entry->next;
-    }
+    }    
+    exit(1); // kai: exit early
 
     exit_gui_popup = !M_ParmExists("-nogui");
 
