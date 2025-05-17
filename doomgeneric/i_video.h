@@ -66,11 +66,11 @@ typedef struct
     void (*InitMode)(byte *palette);
     
     // Function to call to draw the screen from the source buffer.
-    // Return true if draw was successful.
+    // Return TRUE if draw was successful.
 
     boolean (*DrawScreen)(int x1, int y1, int x2, int y2);
 
-    // If true, this is a "poor quality" mode.  The autoadjust
+    // If TRUE, this is a "poor quality" mode.  The autoadjust
     // code should always attempt to use a different mode to this
     // mode in fullscreen.
     //

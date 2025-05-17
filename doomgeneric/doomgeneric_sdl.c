@@ -5,7 +5,6 @@
 #include "doomgeneric.h"
 
 #include <stdio.h>
-#include <unistd.h>
 
 #include <stdbool.h>
 #include <SDL.h>

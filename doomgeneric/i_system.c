@@ -27,7 +27,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #else
-#include <unistd.h>
 #endif
 
 #ifdef ORIGCODE
@@ -204,7 +203,7 @@ void I_PrintStartupBanner(char *gamedescription)
 // 
 // I_ConsoleStdout
 //
-// Returns true if stdout is a real console, false if it is a file
+// Returns TRUE if stdout is a real console, FALSE if it is a file
 //
 
 boolean I_ConsoleStdout(void)
@@ -354,7 +353,7 @@ static int ZenityErrorBox(char *message)
 // I_Error
 //
 
-static boolean already_quitting = false;
+static boolean already_quitting = FALSE;
 
 void I_Error (char *error, ...)
 {
@@ -372,14 +371,14 @@ void I_Error (char *error, ...)
     }
     else
     {
-        already_quitting = true;
+        already_quitting = TRUE;
     }
 
     // Message first.
     va_start(argptr, error);
     //fprintf(stderr, "\nError: ");
     vfprintf(stderr, error, argptr);
-    fprintf(stderr, "\n\n");
+    fprintf(stderr, "\n");
     va_end(argptr);
     fflush(stderr);
 
@@ -402,6 +401,7 @@ void I_Error (char *error, ...)
 
         entry = entry->next;
     }    
+    fprintf(stderr, "DOOM has encountered an error, exiting...\n");
     exit(1); // kai: exit early
 
     exit_gui_popup = !M_ParmExists("-nogui");
@@ -467,7 +467,7 @@ void I_Error (char *error, ...)
 
     exit(-1);
 #else
-    while (true)
+    while (TRUE)
     {
     }
 #endif
@@ -505,13 +505,13 @@ static const unsigned char *dos_mem_dump = mem_dump_dos622;
 
 boolean I_GetMemoryValue(unsigned int offset, void *value, int size)
 {
-    static boolean firsttime = true;
+    static boolean firsttime = TRUE;
 
     if (firsttime)
     {
         int p, i, val;
 
-        firsttime = false;
+        firsttime = FALSE;
         i = 0;
 
         //!
@@ -563,19 +563,19 @@ boolean I_GetMemoryValue(unsigned int offset, void *value, int size)
     {
     case 1:
         *((unsigned char *) value) = dos_mem_dump[offset];
-        return true;
+        return TRUE;
     case 2:
         *((unsigned short *) value) = dos_mem_dump[offset]
                                     | (dos_mem_dump[offset + 1] << 8);
-        return true;
+        return TRUE;
     case 4:
         *((unsigned int *) value) = dos_mem_dump[offset]
                                   | (dos_mem_dump[offset + 1] << 8)
                                   | (dos_mem_dump[offset + 2] << 16)
                                   | (dos_mem_dump[offset + 3] << 24);
-        return true;
+        return TRUE;
     }
 
-    return false;
+    return FALSE;
 }
 

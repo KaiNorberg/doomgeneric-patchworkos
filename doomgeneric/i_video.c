@@ -41,11 +41,9 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include <fcntl.h>
 
 #include <stdarg.h>
 
-#include <sys/types.h>
 
 //#define CMAP256
 
@@ -65,7 +63,7 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 //	uint32_t bits_per_pixel;		/* guess what			*/
 //	
 //							/* >1 = FOURCC			*/
-//	struct FB_BitField red;		/* bitfield in s_Fb mem if true color, */
+//	struct FB_BitField red;		/* bitfield in s_Fb mem if TRUE color, */
 //	struct FB_BitField green;	/* else only length is significant */
 //	struct FB_BitField blue;
 //	struct FB_BitField transp;	/* transparency			*/
@@ -94,9 +92,9 @@ void I_GetEvent(void);
 
 byte *I_VideoBuffer = NULL;
 
-// If true, game is running as a screensaver
+// If TRUE, game is running as a screensaver
 
-boolean screensaver_mode = false;
+boolean screensaver_mode = FALSE;
 
 // Flag indicating whether the screen is currently visible:
 // when the screen isnt visible, don't render the screen
@@ -234,7 +232,7 @@ void I_InitGraphics (void)
     /* Allocate screen to draw to */
 	I_VideoBuffer = (byte*)Z_Malloc (SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);  // For DOOM to draw on
 
-	screenvisible = true;
+	screenvisible = TRUE;
 
     extern void I_InitInput(void);
     I_InitInput();
@@ -315,7 +313,7 @@ void I_SetPalette (byte* palette)
 
 #ifdef CMAP256
 
-    palette_changed = true;
+    palette_changed = TRUE;
 
 #endif  // CMAP256
 }

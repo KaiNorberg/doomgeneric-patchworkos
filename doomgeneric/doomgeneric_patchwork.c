@@ -220,7 +220,7 @@ static void precalculate_coords(void)
 
 void DG_Init()
 {
-    init = true;
+    init = TRUE;
     startTime = uptime();
 
     disp = display_new();
@@ -356,7 +356,7 @@ void DG_SetWindowTitle(const char * title)
 
 int main(int argc, char **argv)
 {
-    init = false;
+    init = FALSE;
 
     doomgeneric_Create(argc, argv);
 
@@ -375,5 +375,6 @@ int main(int argc, char **argv)
         deinit();
     }
 
+    printf("doom exit\n");
     return 0;
 }

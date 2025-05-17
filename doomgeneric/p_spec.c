@@ -67,7 +67,7 @@ typedef struct
 //
 typedef struct
 {
-    int 	istexture;	// if false, it is a flat
+    int 	istexture;	// if FALSE, it is a flat
     char	endname[9];
     char	startname[9];
     int		speed;
@@ -95,33 +95,33 @@ extern anim_t*	lastanim;
 //
 animdef_t		animdefs[] =
 {
-    {false,	"NUKAGE3",	"NUKAGE1",	8},
-    {false,	"FWATER4",	"FWATER1",	8},
-    {false,	"SWATER4",	"SWATER1", 	8},
-    {false,	"LAVA4",	"LAVA1",	8},
-    {false,	"BLOOD3",	"BLOOD1",	8},
+    {FALSE,	"NUKAGE3",	"NUKAGE1",	8},
+    {FALSE,	"FWATER4",	"FWATER1",	8},
+    {FALSE,	"SWATER4",	"SWATER1", 	8},
+    {FALSE,	"LAVA4",	"LAVA1",	8},
+    {FALSE,	"BLOOD3",	"BLOOD1",	8},
 
     // DOOM II flat animations.
-    {false,	"RROCK08",	"RROCK05",	8},		
-    {false,	"SLIME04",	"SLIME01",	8},
-    {false,	"SLIME08",	"SLIME05",	8},
-    {false,	"SLIME12",	"SLIME09",	8},
+    {FALSE,	"RROCK08",	"RROCK05",	8},		
+    {FALSE,	"SLIME04",	"SLIME01",	8},
+    {FALSE,	"SLIME08",	"SLIME05",	8},
+    {FALSE,	"SLIME12",	"SLIME09",	8},
 
-    {true,	"BLODGR4",	"BLODGR1",	8},
-    {true,	"SLADRIP3",	"SLADRIP1",	8},
+    {TRUE,	"BLODGR4",	"BLODGR1",	8},
+    {TRUE,	"SLADRIP3",	"SLADRIP1",	8},
 
-    {true,	"BLODRIP4",	"BLODRIP1",	8},
-    {true,	"FIREWALL",	"FIREWALA",	8},
-    {true,	"GSTFONT3",	"GSTFONT1",	8},
-    {true,	"FIRELAVA",	"FIRELAV3",	8},
-    {true,	"FIREMAG3",	"FIREMAG1",	8},
-    {true,	"FIREBLU2",	"FIREBLU1",	8},
-    {true,	"ROCKRED3",	"ROCKRED1",	8},
+    {TRUE,	"BLODRIP4",	"BLODRIP1",	8},
+    {TRUE,	"FIREWALL",	"FIREWALA",	8},
+    {TRUE,	"GSTFONT3",	"GSTFONT1",	8},
+    {TRUE,	"FIRELAVA",	"FIRELAV3",	8},
+    {TRUE,	"FIREMAG3",	"FIREMAG1",	8},
+    {TRUE,	"FIREBLU2",	"FIREBLU1",	8},
+    {TRUE,	"ROCKRED3",	"ROCKRED1",	8},
 
-    {true,	"BFALL4",	"BFALL1",	8},
-    {true,	"SFALL4",	"SFALL1",	8},
-    {true,	"WFALL4",	"WFALL1",	8},
-    {true,	"DBRAIN4",	"DBRAIN1",	8},
+    {TRUE,	"BFALL4",	"BFALL1",	8},
+    {TRUE,	"SFALL4",	"SFALL1",	8},
+    {TRUE,	"WFALL4",	"WFALL1",	8},
+    {TRUE,	"DBRAIN4",	"DBRAIN1",	8},
 	
     {-1,        "",             "",             0},
 };
@@ -1099,7 +1099,7 @@ void P_UpdateSpecials (void)
 
     
     //	LEVEL TIMER
-    if (levelTimer == true)
+    if (levelTimer == TRUE)
     {
 	levelTimeCount--;
 	if (!levelTimeCount)
@@ -1330,7 +1330,7 @@ int EV_DoDonut(line_t*	line)
 	    s2->specialdata = floor;
 	    floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
 	    floor->type = donutRaise;
-	    floor->crush = false;
+	    floor->crush = FALSE;
 	    floor->direction = 1;
 	    floor->sector = s2;
 	    floor->speed = FLOORSPEED / 2;
@@ -1344,7 +1344,7 @@ int EV_DoDonut(line_t*	line)
 	    s1->specialdata = floor;
 	    floor->thinker.function.acp1 = (actionf_p1) T_MoveFloor;
 	    floor->type = lowerFloor;
-	    floor->crush = false;
+	    floor->crush = FALSE;
 	    floor->direction = -1;
 	    floor->sector = s1;
 	    floor->speed = FLOORSPEED / 2;
@@ -1380,12 +1380,12 @@ void P_SpawnSpecials (void)
 
     if (timelimit > 0 && deathmatch)
     {
-        levelTimer = true;
+        levelTimer = TRUE;
         levelTimeCount = timelimit * 60 * TICRATE;
     }
     else
     {
-	levelTimer = false;
+	levelTimer = FALSE;
     }
 
     //	Init special SECTORs.

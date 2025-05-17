@@ -115,7 +115,7 @@ typedef struct player_s
     int			ammo[NUMAMMO];
     int			maxammo[NUMAMMO];
 
-    // True if button down last tic.
+    // TRUE if button down last tic.
     int			attackdown;
     int			usedown;
 
@@ -155,7 +155,7 @@ typedef struct player_s
     // Overlay view sprites (gun, etc).
     pspdef_t		psprites[NUMPSPRITES];
 
-    // True if secret level has been done.
+    // TRUE if secret level has been done.
     boolean		didsecret;	
 
 } player_t;
@@ -183,7 +183,7 @@ typedef struct
 {
     int		epsd;	// episode # (0-2)
 
-    // if true, splash the secret level
+    // if TRUE, splash the secret level
     boolean	didsecret;
     
     // previous and next levels, origin 0
