@@ -6,6 +6,7 @@
 #include <threads.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/proc.h>
 #include <sys/fb.h>
 #include <libdwm/dwm.h>
@@ -20,6 +21,8 @@ static clock_t startTime;
 
 static display_t* disp;
 static window_t* win;
+
+static uint32_t* lineBuffer = NULL;
 
 const int keyToDoomkey[256] = {
     [KBD_NONE] = 0,
@@ -150,14 +153,14 @@ static uint64_t kbdQueueReadIndex = 0;
 
 static void key_queue_push(const event_kbd_t* event)
 {
-	kbdQueue[kbdQueueWriteIndex] = *event;
-	kbdQueueWriteIndex = (kbdQueueWriteIndex + 1) % KBD_QUEUE_SIZE;
+    kbdQueue[kbdQueueWriteIndex] = *event;
+    kbdQueueWriteIndex = (kbdQueueWriteIndex + 1) % KBD_QUEUE_SIZE;
 }
 
 static event_kbd_t key_queue_pop(void)
 {
-	event_kbd_t event = kbdQueue[kbdQueueReadIndex];
-	kbdQueueReadIndex = (kbdQueueReadIndex + 1) % KBD_QUEUE_SIZE;
+    event_kbd_t event = kbdQueue[kbdQueueReadIndex];
+    kbdQueueReadIndex = (kbdQueueReadIndex + 1) % KBD_QUEUE_SIZE;
     return event;
 }
 
@@ -260,11 +263,22 @@ void DG_Init()
     close(fb);
 
     precalculate_coords();
+
+    lineBuffer = (uint32_t*)malloc((dstXEnd[SCREENWIDTH-1] - dstXStart[0]) * sizeof(uint32_t));
+    if (lineBuffer == NULL) 
+    {
+        printf("Failed to allocate lineBuffer\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 static void deinit(void)
 {
     munmap(screenbuffer, info.stride * info.height * sizeof(uint32_t));
+    if (lineBuffer) {
+        free(lineBuffer);
+        lineBuffer = NULL;
+    }
 
     window_free(win);
     display_free(disp);
@@ -273,12 +287,13 @@ static void deinit(void)
 static inline void* memset32_inline(void* s, uint32_t c, size_t n)
 {
     uint32_t* p = s;
-    
+
     while (((uintptr_t)p & 3) && n) {
         *p++ = c;
         n--;
     }
     
+
     while (n >= 8) {
         p[0] = c;
         p[1] = c;
@@ -298,35 +313,46 @@ static inline void* memset32_inline(void* s, uint32_t c, size_t n)
 
 void DG_DrawFrame()
 {    
+    const uint64_t scaledStartX = dstXStart[0];
+    const uint64_t scaledWidth = dstXEnd[SCREENWIDTH-1] - scaledStartX;
+
     for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++)
     {
         const uint64_t srcRowOffset = srcY * SCREENWIDTH;
         
+        uint64_t relativeStartX = 0;
+        uint32_t currentPixel = *((uint32_t*)&colors[I_VideoBuffer[srcRowOffset]]);
+        
+        for (uint64_t srcX = 1; srcX < SCREENWIDTH; srcX++)
+        {
+            const uint32_t nextPixel = *((uint32_t*)&colors[I_VideoBuffer[srcX + srcRowOffset]]);
+            
+            if (nextPixel != currentPixel) 
+            {
+                uint64_t relativeEndX = dstXStart[srcX] - scaledStartX; 
+                
+                memset32_inline(&lineBuffer[relativeStartX], currentPixel,
+                    relativeEndX - relativeStartX);
+                
+                relativeStartX = relativeEndX;
+                currentPixel = nextPixel;
+            }
+        }
+        memset32_inline(&lineBuffer[relativeStartX], currentPixel,
+            scaledWidth - relativeStartX);
+
         for (uint64_t y = dstYStart[srcY]; y < dstYEnd[srcY]; y++) 
         {
-            uint32_t* dstRow = &screenbuffer[y * info.stride];
-            uint64_t runStart = dstXStart[0];
-            uint32_t currentPixel = *((uint32_t*)&colors[I_VideoBuffer[srcRowOffset]]);
+            uint32_t* dstRowTarget = &screenbuffer[y * info.stride + scaledStartX];
             
-            for (uint64_t srcX = 1; srcX < SCREENWIDTH; srcX++)
-            {
-                const uint32_t nextPixel = *((uint32_t*)&colors[I_VideoBuffer[srcX + srcRowOffset]]);
-                
-                if (nextPixel != currentPixel) {
-                    memset32_inline(&dstRow[runStart], currentPixel, dstXStart[srcX] - runStart);
-                    runStart = dstXStart[srcX];
-                    currentPixel = nextPixel;
-                }
-            }
-            
-            memset32_inline(&dstRow[runStart], currentPixel, dstXEnd[SCREENWIDTH-1] - runStart);
+            memcpy(dstRowTarget, lineBuffer, scaledWidth * sizeof(uint32_t));
         }
     }
 }
 
 void DG_SleepMs(uint32_t ms)
 {
-    struct timespec timespec = {.tv_nsec = ms * 1000000};
+    struct timespec timespec = {.tv_nsec = ms * (CLOCKS_PER_SEC / 1000)};
     thrd_sleep(&timespec, NULL);
 }
 
