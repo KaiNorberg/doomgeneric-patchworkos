@@ -3,6 +3,7 @@
 #include "doomgeneric.h"
 #include "i_video.h"
 
+#include <errno.h>
 #include <threads.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,16 +14,12 @@
 
 // Note: I might have over optimized rendering a little.
 
-static fb_info_t info;
-static uint32_t* screenbuffer;
-
 static bool init;
 static clock_t startTime;
 
 static display_t* disp;
 static window_t* win;
-
-static uint32_t* lineBuffer = NULL;
+static rect_t screenRect;
 
 const int keyToDoomkey[256] = {
     [KBD_NONE] = 0,
@@ -169,18 +166,37 @@ static bool key_queue_avail(void)
     return (kbdQueueReadIndex != kbdQueueWriteIndex);
 }
 
-static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
+static inline void* memset32_inline(void* s, uint32_t c, size_t n)
 {
-    switch (event->type)
+    uint32_t* p = s;
+
+    while (((uintptr_t)p & 3) && n) 
     {
-    case EVENT_KBD:
-    {
-        key_queue_push(&event->kbd);
-    }
-    break;
+        *p++ = c;
+        n--;
     }
 
-    return 0;
+    while (n >= 8) 
+    {
+        p[0] = c; 
+        p[1] = c; 
+        p[2] = c; 
+        p[3] = c;
+        p[4] = c; 
+        p[5] = c; 
+        p[6] = c; 
+        p[7] = c;
+        p += 8;
+        n -= 8;
+    }
+    
+    while (n >= 1) 
+    {
+        *p++ = c;
+        n--;
+    }
+    
+    return s;
 }
 
 static uint64_t dstYStart[SCREENHEIGHT];
@@ -190,23 +206,26 @@ static uint64_t dstXEnd[SCREENWIDTH];
 
 static void precalculate_coords(void)
 {
+    int64_t width = RECT_WIDTH(&screenRect);
+    int64_t height = RECT_HEIGHT(&screenRect);
+
     uint64_t upscaleNumerator;
     uint64_t upscaleDenominator;
-    if (info.width / SCREENWIDTH > info.height / SCREENHEIGHT)
+    if (width / SCREENWIDTH > height / SCREENHEIGHT)
     {
-        upscaleNumerator = info.height;
+        upscaleNumerator = height;
         upscaleDenominator = SCREENHEIGHT;
     }
     else
     {
-        upscaleNumerator = info.width;
+        upscaleNumerator = width;
         upscaleDenominator = SCREENWIDTH;
     }
 
     const uint64_t scaledWidth = (SCREENWIDTH * upscaleNumerator) / upscaleDenominator;
     const uint64_t scaledHeight = (SCREENHEIGHT * upscaleNumerator) / upscaleDenominator;
-    const uint64_t topLeftX = (info.width - scaledWidth) / 2;
-    const uint64_t topLeftY = (info.height - scaledHeight) / 2;
+    const uint64_t topLeftX = (width - scaledWidth) / 2;
+    const uint64_t topLeftY = (height - scaledHeight) / 2;
     
     for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++) 
     {
@@ -221,6 +240,68 @@ static void precalculate_coords(void)
     }
 }
 
+static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
+{
+    switch (event->type)
+    {
+    case LEVENT_REDRAW:
+    {
+        drawable_t draw;
+        element_draw_begin(elem, &draw);
+
+        const uint64_t scaledStartX = dstXStart[0];
+        const uint64_t scaledWidth = dstXEnd[SCREENWIDTH-1] - scaledStartX;
+    
+        for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++)
+        {
+            const uint64_t srcRowOffset = srcY * SCREENWIDTH;
+            
+            uint64_t relativeStartX = 0;
+            uint32_t currentPixel = *((uint32_t*)&colors[I_VideoBuffer[srcRowOffset]]);
+
+            uint32_t* firstRow = &draw.buffer[dstYStart[srcY] * draw.stride + scaledStartX];
+
+            for (uint64_t srcX = 1; srcX < SCREENWIDTH; srcX++)
+            {
+                const uint32_t nextPixel = *((uint32_t*)&colors[I_VideoBuffer[srcX + srcRowOffset]]);
+                
+                if (nextPixel != currentPixel) 
+                {
+                    uint64_t relativeEndX = dstXStart[srcX] - scaledStartX; 
+                    
+                    memset32_inline(&firstRow[relativeStartX], currentPixel,
+                        relativeEndX - relativeStartX);
+                    
+                    relativeStartX = relativeEndX;
+                    currentPixel = nextPixel;
+                }
+            }
+            memset32_inline(&firstRow[relativeStartX], currentPixel,
+                scaledWidth - relativeStartX);
+    
+            for (uint64_t y = dstYStart[srcY] + 1; y < dstYEnd[srcY]; y++) 
+            {
+                uint32_t* dstRowTarget = &draw.buffer[y * draw.stride + scaledStartX];
+                
+                memcpy(dstRowTarget, firstRow, scaledWidth * sizeof(uint32_t));
+            }
+        }
+
+        draw_invalidate(&draw, NULL);
+
+        element_draw_end(elem, &draw);
+    }
+    break;
+    case EVENT_KBD:
+    {
+        key_queue_push(&event->kbd);
+    }
+    break;
+    }
+
+    return 0;
+}
+
 void DG_Init()
 {
     init = TRUE;
@@ -228,126 +309,29 @@ void DG_Init()
 
     disp = display_new();
 
-    rect_t rect = RECT_INIT_DIM(0, 0, 1, 1); // Does not matter for a fullscreen window
-    window_t* win = window_new(disp, "Doom", &rect, SURFACE_FULLSCREEN, WINDOW_NONE, procedure, NULL);
-
-    fd_t fb = open("sys:/fb0");
-    if (fb == ERR)
+    display_screen_rect(disp, &screenRect, 0);
+    win = window_new(disp, "Doom", &screenRect, SURFACE_FULLSCREEN, WINDOW_NONE, procedure, NULL);
+    if (win == NULL)
     {
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "doom: failed to create window (%s)\n", strerror(errno));
+        abort();
     }
-    if (ioctl(fb, IOCTL_FB_INFO, &info, sizeof(fb_info_t)) == ERR)
-    {
-        exit(EXIT_FAILURE);
-    }
-
-    switch (info.format)
-    {
-    case FB_ARGB32:
-    {
-        screenbuffer = mmap(fb, NULL, info.stride * info.height * sizeof(uint32_t), PROT_READ | PROT_WRITE);
-        if (screenbuffer == NULL)
-        {
-            exit(EXIT_FAILURE);
-        }
-        memset(screenbuffer, 0, info.stride * info.height * sizeof(uint32_t));
-    }
-    break;
-    default:
-    {
-        printf("invalid framebuffer format\n");
-        exit(EXIT_FAILURE);
-    }
-    }
-
-    close(fb);
 
     precalculate_coords();
-
-    lineBuffer = (uint32_t*)malloc((dstXEnd[SCREENWIDTH-1] - dstXStart[0]) * sizeof(uint32_t));
-    if (lineBuffer == NULL) 
-    {
-        printf("Failed to allocate lineBuffer\n");
-        exit(EXIT_FAILURE);
-    }
 }
 
 static void deinit(void)
 {
-    munmap(screenbuffer, info.stride * info.height * sizeof(uint32_t));
-    if (lineBuffer) {
-        free(lineBuffer);
-        lineBuffer = NULL;
-    }
-
     window_free(win);
     display_free(disp);
 }
 
-static inline void* memset32_inline(void* s, uint32_t c, size_t n)
-{
-    uint32_t* p = s;
-
-    while (((uintptr_t)p & 3) && n) {
-        *p++ = c;
-        n--;
-    }
-    
-
-    while (n >= 8) {
-        p[0] = c;
-        p[1] = c;
-        p[2] = c;
-        p[3] = c;
-        p += 4;
-        n -= 4;
-    }
-    
-    while (n >= 1) {
-        *p++ = c;
-        n--;
-    }
-    
-    return s;
-}
-
 void DG_DrawFrame()
-{    
-    const uint64_t scaledStartX = dstXStart[0];
-    const uint64_t scaledWidth = dstXEnd[SCREENWIDTH-1] - scaledStartX;
-
-    for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++)
-    {
-        const uint64_t srcRowOffset = srcY * SCREENWIDTH;
-        
-        uint64_t relativeStartX = 0;
-        uint32_t currentPixel = *((uint32_t*)&colors[I_VideoBuffer[srcRowOffset]]);
-        
-        for (uint64_t srcX = 1; srcX < SCREENWIDTH; srcX++)
-        {
-            const uint32_t nextPixel = *((uint32_t*)&colors[I_VideoBuffer[srcX + srcRowOffset]]);
-            
-            if (nextPixel != currentPixel) 
-            {
-                uint64_t relativeEndX = dstXStart[srcX] - scaledStartX; 
-                
-                memset32_inline(&lineBuffer[relativeStartX], currentPixel,
-                    relativeEndX - relativeStartX);
-                
-                relativeStartX = relativeEndX;
-                currentPixel = nextPixel;
-            }
-        }
-        memset32_inline(&lineBuffer[relativeStartX], currentPixel,
-            scaledWidth - relativeStartX);
-
-        for (uint64_t y = dstYStart[srcY]; y < dstYEnd[srcY]; y++) 
-        {
-            uint32_t* dstRowTarget = &screenbuffer[y * info.stride + scaledStartX];
-            
-            memcpy(dstRowTarget, lineBuffer, scaledWidth * sizeof(uint32_t));
-        }
-    }
+{   
+    levent_redraw_t event;
+    event.id = element_id(window_client_element(win));
+    event.propagate = false;
+    display_emit(disp, window_id(win), LEVENT_REDRAW, &event, sizeof(event));
 }
 
 void DG_SleepMs(uint32_t ms)
@@ -401,6 +385,6 @@ int main(int argc, char **argv)
         deinit();
     }
 
-    printf("doom exit\n");
+    printf("doom: exit\n");
     return 0;
 }
