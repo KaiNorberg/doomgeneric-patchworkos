@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <sys/proc.h>
 #include <sys/fb.h>
-#include <libdwm/dwm.h>
+#include <libpatchwork/patchwork.h>
 
 // Note: I might have over optimized rendering a little.
 
@@ -329,9 +329,9 @@ static void deinit(void)
 void DG_DrawFrame()
 {   
     levent_redraw_t event;
-    event.id = element_id(window_client_element(win));
+    event.id = element_id_get(window_client_element_get(win));
     event.propagate = false;
-    display_emit(disp, window_id(win), LEVENT_REDRAW, &event, sizeof(event));
+    display_emit(disp, window_id_get(win), LEVENT_REDRAW, &event, sizeof(event));
 }
 
 void DG_SleepMs(uint32_t ms)

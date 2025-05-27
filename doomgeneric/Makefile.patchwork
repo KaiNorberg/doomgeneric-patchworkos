@@ -16,7 +16,7 @@ PATCHWORKOS = ../../..
 CC=./$(PATCHWORKOS)/tools/patchwork-gcc
 LD=./$(PATCHWORKOS)/tools/patchwork-ld
 CFLAGS+=-ggdb -O3
-LDFLAGS+=-static -ldwm
+LDFLAGS+=-static -lpatchwork
 
 # subdirectory for objects
 OBJDIR=build/doomgeneric
