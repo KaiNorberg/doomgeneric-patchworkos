@@ -170,32 +170,32 @@ static inline void* memset32_inline(void* s, uint32_t c, size_t n)
 {
     uint32_t* p = s;
 
-    while (((uintptr_t)p & 3) && n) 
+    while (((uintptr_t)p & 3) && n)
     {
         *p++ = c;
         n--;
     }
 
-    while (n >= 8) 
+    while (n >= 8)
     {
-        p[0] = c; 
-        p[1] = c; 
-        p[2] = c; 
+        p[0] = c;
+        p[1] = c;
+        p[2] = c;
         p[3] = c;
-        p[4] = c; 
-        p[5] = c; 
-        p[6] = c; 
+        p[4] = c;
+        p[5] = c;
+        p[6] = c;
         p[7] = c;
         p += 8;
         n -= 8;
     }
-    
-    while (n >= 1) 
+
+    while (n >= 1)
     {
         *p++ = c;
         n--;
     }
-    
+
     return s;
 }
 
@@ -226,14 +226,14 @@ static void precalculate_coords(void)
     const uint64_t scaledHeight = (SCREENHEIGHT * upscaleNumerator) / upscaleDenominator;
     const uint64_t topLeftX = (width - scaledWidth) / 2;
     const uint64_t topLeftY = (height - scaledHeight) / 2;
-    
-    for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++) 
+
+    for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++)
     {
         dstYStart[srcY] = topLeftY + (srcY * upscaleNumerator) / upscaleDenominator;
         dstYEnd[srcY] = topLeftY + ((srcY + 1) * upscaleNumerator) / upscaleDenominator;
     }
-    
-    for (uint64_t srcX = 0; srcX < SCREENWIDTH; srcX++) 
+
+    for (uint64_t srcX = 0; srcX < SCREENWIDTH; srcX++)
     {
         dstXStart[srcX] = topLeftX + (srcX * upscaleNumerator) / upscaleDenominator;
         dstXEnd[srcX] = topLeftX + ((srcX + 1) * upscaleNumerator) / upscaleDenominator;
@@ -251,11 +251,11 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
         const uint64_t scaledStartX = dstXStart[0];
         const uint64_t scaledWidth = dstXEnd[SCREENWIDTH-1] - scaledStartX;
-    
+
         for (uint64_t srcY = 0; srcY < SCREENHEIGHT; srcY++)
         {
             const uint64_t srcRowOffset = srcY * SCREENWIDTH;
-            
+
             uint64_t relativeStartX = 0;
             uint32_t currentPixel = *((uint32_t*)&colors[I_VideoBuffer[srcRowOffset]]);
 
@@ -264,25 +264,25 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
             for (uint64_t srcX = 1; srcX < SCREENWIDTH; srcX++)
             {
                 const uint32_t nextPixel = *((uint32_t*)&colors[I_VideoBuffer[srcX + srcRowOffset]]);
-                
-                if (nextPixel != currentPixel) 
+
+                if (nextPixel != currentPixel)
                 {
-                    uint64_t relativeEndX = dstXStart[srcX] - scaledStartX; 
-                    
+                    uint64_t relativeEndX = dstXStart[srcX] - scaledStartX;
+
                     memset32_inline(&firstRow[relativeStartX], currentPixel,
                         relativeEndX - relativeStartX);
-                    
+
                     relativeStartX = relativeEndX;
                     currentPixel = nextPixel;
                 }
             }
             memset32_inline(&firstRow[relativeStartX], currentPixel,
                 scaledWidth - relativeStartX);
-    
-            for (uint64_t y = dstYStart[srcY] + 1; y < dstYEnd[srcY]; y++) 
+
+            for (uint64_t y = dstYStart[srcY] + 1; y < dstYEnd[srcY]; y++)
             {
                 uint32_t* dstRowTarget = &draw.buffer[y * draw.stride + scaledStartX];
-                
+
                 memcpy(dstRowTarget, firstRow, scaledWidth * sizeof(uint32_t));
             }
         }
@@ -327,11 +327,11 @@ static void deinit(void)
 }
 
 void DG_DrawFrame()
-{   
+{
     levent_redraw_t event;
-    event.id = element_id_get(window_client_element_get(win));
-    event.propagate = false;
-    display_emit(disp, window_id_get(win), LEVENT_REDRAW, &event, sizeof(event));
+    event.id = element_get_id(window_get_client_element(win));
+    event.shouldPropagate = false;
+    display_emit(disp, window_get_id(win), LEVENT_REDRAW, &event, sizeof(event));
 }
 
 void DG_SleepMs(uint32_t ms)
@@ -370,7 +370,7 @@ int main(int argc, char **argv)
 
     doomgeneric_Create(argc, argv);
 
-    while (display_connected(disp))
+    while (display_is_connected(disp))
     {
         event_t event;
         while (display_next_event(disp, &event, 0))
