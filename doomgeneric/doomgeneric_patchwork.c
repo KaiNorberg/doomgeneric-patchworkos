@@ -166,39 +166,6 @@ static bool key_queue_avail(void)
     return (kbdQueueReadIndex != kbdQueueWriteIndex);
 }
 
-static inline void* memset32_inline(void* s, uint32_t c, size_t n)
-{
-    uint32_t* p = s;
-
-    while (((uintptr_t)p & 3) && n)
-    {
-        *p++ = c;
-        n--;
-    }
-
-    while (n >= 8)
-    {
-        p[0] = c;
-        p[1] = c;
-        p[2] = c;
-        p[3] = c;
-        p[4] = c;
-        p[5] = c;
-        p[6] = c;
-        p[7] = c;
-        p += 8;
-        n -= 8;
-    }
-
-    while (n >= 1)
-    {
-        *p++ = c;
-        n--;
-    }
-
-    return s;
-}
-
 static uint64_t dstYStart[SCREENHEIGHT];
 static uint64_t dstYEnd[SCREENHEIGHT];
 static uint64_t dstXStart[SCREENWIDTH];
@@ -269,14 +236,14 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
                 {
                     uint64_t relativeEndX = dstXStart[srcX] - scaledStartX;
 
-                    memset32_inline(&firstRow[relativeStartX], currentPixel,
+                    memset32(&firstRow[relativeStartX], currentPixel,
                         relativeEndX - relativeStartX);
 
                     relativeStartX = relativeEndX;
                     currentPixel = nextPixel;
                 }
             }
-            memset32_inline(&firstRow[relativeStartX], currentPixel,
+            memset32(&firstRow[relativeStartX], currentPixel,
                 scaledWidth - relativeStartX);
 
             for (uint64_t y = dstYStart[srcY] + 1; y < dstYEnd[srcY]; y++)
