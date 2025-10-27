@@ -346,7 +346,7 @@ int main(int argc, char **argv)
     while (display_is_connected(disp))
     {
         event_t event;
-        while (display_next(disp, &event, 0))
+        while (display_next(disp, &event, 0) != ERR)
         {
             display_dispatch(disp, &event);
         }
