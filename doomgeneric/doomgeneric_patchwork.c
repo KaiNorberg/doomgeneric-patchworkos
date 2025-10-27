@@ -276,7 +276,7 @@ void DG_Init()
 
     disp = display_new();
 
-    display_screen_rect(disp, &screenRect, 0);
+    display_get_screen(disp, &screenRect, 0);
     win = window_new(disp, "Doom", &screenRect, SURFACE_FULLSCREEN, WINDOW_NONE, procedure, NULL);
     if (win == NULL)
     {
@@ -337,10 +337,16 @@ int main(int argc, char **argv)
 
     doomgeneric_Create(argc, argv);
 
+    if (window_set_visible(win, true) == ERR)
+    {
+        fprintf(stderr, "doom: failed to show window (%s)\n", strerror(errno));
+        abort();
+    }
+
     while (display_is_connected(disp))
     {
         event_t event;
-        while (display_next_event(disp, &event, 0))
+        while (display_next(disp, &event, 0))
         {
             display_dispatch(disp, &event);
         }
