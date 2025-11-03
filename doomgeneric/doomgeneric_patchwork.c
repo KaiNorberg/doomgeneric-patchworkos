@@ -211,7 +211,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 {
     switch (event->type)
     {
-    case LEVENT_REDRAW:
+    case EVENT_LIB_REDRAW:
     {
         drawable_t draw;
         element_draw_begin(elem, &draw);
@@ -295,10 +295,10 @@ static void deinit(void)
 
 void DG_DrawFrame()
 {
-    levent_redraw_t event;
+    event_lib_redraw_t event;
     event.id = element_get_id(window_get_client_element(win));
     event.shouldPropagate = false;
-    display_emit(disp, window_get_id(win), LEVENT_REDRAW, &event, sizeof(event));
+    display_emit(disp, window_get_id(win), EVENT_LIB_REDRAW, &event, sizeof(event));
 }
 
 void DG_SleepMs(uint32_t ms)
