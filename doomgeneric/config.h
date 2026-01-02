@@ -97,4 +97,4 @@
 #undef ORIGCODE
 
 /* Define to the directory where all game files are located */
-#define FILES_DIR "/usr/lib/doom"
+#define FILES_DIR "/app/data"

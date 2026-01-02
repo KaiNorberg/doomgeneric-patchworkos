@@ -275,6 +275,11 @@ void DG_Init()
     startTime = uptime();
 
     disp = display_new();
+    if (disp == NULL)
+    {
+        fprintf(stderr, "doom: failed to create display (%s)\n", strerror(errno));
+        abort();
+    }
 
     display_get_screen(disp, &screenRect, 0);
     win = window_new(disp, "Doom", &screenRect, SURFACE_FULLSCREEN, WINDOW_NONE, procedure, NULL);
