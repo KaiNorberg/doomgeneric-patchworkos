@@ -9,7 +9,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/proc.h>
-#include <sys/fb.h>
 #include <libpatchwork/patchwork.h>
 
 // Note: I might have over optimized rendering a little.
