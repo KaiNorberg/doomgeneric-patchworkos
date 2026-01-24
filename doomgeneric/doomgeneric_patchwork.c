@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/proc.h>
-#include <libpatchwork/patchwork.h>
+#include <patchwork/patchwork.h>
 
 // Note: I might have over optimized rendering a little.
 
