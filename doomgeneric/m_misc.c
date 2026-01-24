@@ -32,7 +32,7 @@
 #include <direct.h>
 #endif
 #else
-#include <sys/io.h>
+#include <sys/fs.h>
 #endif
 
 #include "doomtype.h"
